@@ -1,0 +1,14 @@
+build
+dist
+.vscode
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+.DS_Store
+.env
+node_modules
+coverage
+.idea
+*.iml

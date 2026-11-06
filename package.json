@@ -1,0 +1,45 @@
+{
+	"name": "@tasteee/sounds",
+	"version": "0.1.0",
+	"description": "High-DX instrument API on top of smplr: stock pianos and drums, plus remote JSON, SFZ and SF2 instruments.",
+	"license": "MIT",
+	"author": "tasteee",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/tasteee/sounds.git"
+	},
+	"keywords": ["piano", "smplr", "audio", "web-audio", "sfz", "sf2", "instruments"],
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		}
+	},
+	"files": ["dist", "README.md"],
+	"scripts": {
+		"build": "tsup",
+		"typecheck": "tsc --noEmit",
+		"dev:demo": "vite demo",
+		"prepublishOnly": "pnpm build"
+	},
+	"dependencies": {
+		"await-to-js": "^3.0.0",
+		"datass": "^2.1.2",
+		"smplr": "^1.1.0",
+		"soundfont2": "^0.5.0"
+	},
+	"devDependencies": {
+		"@types/react": "^19.2.17",
+		"@types/react-dom": "^19.2.3",
+		"react": "^19",
+		"react-dom": "^19",
+		"tsup": "^8.5.0",
+		"typescript": "^5.9.3",
+		"vite": "^6.4.3"
+	}
+}
