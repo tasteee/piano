@@ -13,7 +13,7 @@ Samples download on first use. Audio unlocks itself on the first call, so call `
 ## API
 
 ```ts
-piano.play(notes, options?)    // notes: 'C4' | 60 | ['C4', 'E4', 'G4']
+piano.play(notes, options?)    // notes: 'C4' | 60 | ['C4', 'E4'] | [{ note: 'C4', velocity: 0.5 }]
 piano.stop(...notes)           // stop('C4'), stop('C4', 'E4'), stop(['C4', 'E4']), stop() for all
 piano.getPlayingNotes()        // notes currently sounding
 piano.sustain(true | false)    // sustain pedal
@@ -33,6 +33,21 @@ All are optional and shared by every note in the call. Random ranges are picked 
 | `delay`                    | `0`     | Exact delay in milliseconds                     |
 | `minDelay` `maxDelay`      | none    | Random delay range in ms. `delay` wins          |
 | `duration`                 | `10000` | Milliseconds until release. `Infinity` rings until `stop` |
+
+## Different options per note
+
+Pass objects to give each note its own options. The second argument holds shared defaults, and options on a note win.
+
+```ts
+piano.play([
+	{ note: 'C4', velocity: 0.9, duration: 2000 },
+	{ note: 'E4', velocity: 0.5, delay: 30 },
+	{ note: 'G4', minVelocity: 0.4, maxVelocity: 0.6 }
+])
+
+// mix bare notes and objects, with shared defaults
+piano.play(['C4', { note: 'E4', velocity: 0.3 }, 'G4'], { velocity: 0.8, duration: 1500 })
+```
 
 ## Hanging-note protection
 

@@ -25,6 +25,11 @@ export type PlayOptionsT = {
 	duration?: number
 }
 
+export type NoteWithOptionsT = PlayOptionsT & { note: NoteT }
+
+/** A bare note, or a note with its own options. */
+export type PlayInputT = NoteT | NoteWithOptionsT
+
 export type StopArgumentT = NoteT | NoteT[]
 
 export type EngineSettingsT = {
@@ -148,7 +153,11 @@ export const createInstrument = (options: CreateInstrumentOptionsT = {}) => {
 		forgetNote(noteKey)
 	}
 
-	const startOneNote = (instance: Smplr, note: NoteT, playOptions: PlayOptionsT) => {
+	const startOneNote = (instance: Smplr, input: PlayInputT, sharedOptions: PlayOptionsT) => {
+		const isBareNote = typeof input === 'string' || typeof input === 'number'
+		const note = isBareNote ? input : input.note
+		// Options on the note beat the shared ones.
+		const playOptions: PlayOptionsT = isBareNote ? sharedOptions : { ...sharedOptions, ...input }
 		const noteKey = toNote(note)
 		// Replaying a note cuts the old voice so it can never hang.
 		stopOneNote(instance, note)
@@ -168,10 +177,10 @@ export const createInstrument = (options: CreateInstrumentOptionsT = {}) => {
 		playingNotes.set(noteKey, { noteName: note, cleanupTimer })
 	}
 
-	const play = (notes: NoteT | NoteT[], playOptions: PlayOptionsT = {}) => {
-		const noteList = Array.isArray(notes) ? notes : [notes]
+	const play = (notes: PlayInputT | PlayInputT[], sharedOptions: PlayOptionsT = {}) => {
+		const inputList = Array.isArray(notes) ? notes : [notes]
 		whenReady((instance) => {
-			for (const note of noteList) startOneNote(instance, note, playOptions)
+			for (const input of inputList) startOneNote(instance, input, sharedOptions)
 		})
 	}
 
