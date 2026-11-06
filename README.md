@@ -1,199 +1,63 @@
 # @tasteee/sounds
 
-A high-DX instrument API built on top of smplr, with note lifecycle state managed by datass.
-
-## What It Solves
-
-- Creates instruments from a remote descriptor URL.
-- Supports both descriptor formats:
-  - JSON (smplr JSON descriptor)
-  - SFZ (parsed and converted to smplr JSON at runtime)
-  - SF2 (SoundFont 2)
-- Prevents hanging notes by stopping same-note replays before starting new voices.
-- Adds per-note timeout cleanup for every started note.
-- Supports deterministic or randomized velocity and delay.
-- Exposes stock, ready-to-use instruments from smplr.
-
-## Install
-
-```bash
-pnpm add @tasteee/sounds
-```
-
-## Import
+A grand piano with a tiny API. Wraps [smplr](https://github.com/danigb/smplr)'s Splendid Grand Piano and the Web Audio setup.
 
 ```ts
-import { instruments } from '@tasteee/sounds'
+import { piano } from '@tasteee/sounds'
+
+piano.play('C4')
 ```
+
+Samples download on first use. Audio unlocks itself on the first call, so call `play` from a click or key handler.
 
 ## API
 
-### instruments.create(options)
+```ts
+piano.play(notes, options?)   // notes: 'C4' | 60 | ['C4', 'E4', 'G4']
+piano.stop(notes?)            // no argument stops everything
+piano.sustain(true | false)   // sustain pedal
+piano.load()                  // optional: preload samples, returns a Promise
+piano.loaded                  // boolean
+piano.volume = 0.8            // 0-1
+```
 
-Creates and loads a custom instrument from a remote URL.
+Options for `play` are shared by every note in the call. All are optional.
+
+| Option     | Default      | Meaning                |
+| ---------- | ------------ | ---------------------- |
+| `velocity` | `100`        | `0-1`, or MIDI `1-127` |
+| `duration` | until `stop` | seconds until release  |
+| `at`       | `0`          | seconds from now       |
+
+## Examples
 
 ```ts
-type CreateInstrumentOptionsT = {
-	name: string
-	description?: string
-	url: string
+piano.play('C4')
+piano.play(['C4', 'E4', 'G4'])
+piano.play('C4', { velocity: 0.4 })
+piano.play(['C4', 'E4', 'G4'], { velocity: 90, duration: 2 })
+piano.play('G4', { at: 0.5 })
+
+piano.stop('C4')
+piano.stop()
+
+// computer keyboard
+onkeydown = (event) => piano.play(keyToNote[event.key])
+onkeyup = (event) => piano.stop(keyToNote[event.key])
+
+// MIDI input
+midiInput.onmidimessage = ({ data: [status, note, velocity] }) => {
+	if (status === 0x90 && velocity > 0) piano.play(note, { velocity })
+	else piano.stop(note)
 }
 ```
 
-Returns:
+For different velocities, call `play` once per velocity.
+
+## Own AudioContext or mixer
 
 ```ts
-Promise<ManagedInstrumentT>
-```
+import { createPiano } from '@tasteee/sounds'
 
-The promise resolves after the underlying smplr instrument is ready.
-
-### ManagedInstrumentT
-
-```ts
-type ManagedInstrumentT = {
-	name: string
-	description: string
-	ready: Promise<void>
-	play: (options: PlayOptionsT) => void
-	stop: (...noteArguments: (string | string[])[]) => void
-	getPlayingNotes: () => string[]
-}
-```
-
-### PlayOptionsT
-
-```ts
-type PlayOptionsT = {
-	notes: string[]
-	duration?: number
-	velocity?: number
-	delay?: number
-	minVelocity?: number
-	maxVelocity?: number
-	minDelay?: number
-	maxDelay?: number
-}
-```
-
-Rules:
-
-- duration is in milliseconds.
-- If duration is omitted, the module uses a safety timeout of 10000ms.
-- velocity accepts either:
-  - MIDI velocity 0-127, or
-  - Decimal 0-1 (converted to MIDI by multiplying by 127).
-- delay is in milliseconds.
-- velocity has precedence over minVelocity and maxVelocity.
-- delay has precedence over minDelay and maxDelay.
-
-### stop signatures
-
-All are supported:
-
-```ts
-instrument.stop('C4')
-instrument.stop('C4', 'E4')
-instrument.stop(['C4', 'E4'])
-instrument.stop()
-```
-
-Behavior:
-
-- Unknown notes are ignored.
-- stop() with no args stops all currently playing notes.
-
-## Usage
-
-### Create a custom instrument
-
-```ts
-import { instruments } from '@tasteee/sounds'
-
-const customInstrument = await instruments.create({
-	name: 'Warm Strings',
-	description: 'Custom remote descriptor',
-	url: 'https://example.com/strings.sfz'
-})
-
-customInstrument.play({
-	notes: ['C4', 'E4', 'G4'],
-	duration: 1200,
-	minVelocity: 0.55,
-	maxVelocity: 0.82,
-	minDelay: 0,
-	maxDelay: 45
-})
-```
-
-### Play with exact velocity and delay
-
-```ts
-customInstrument.play({
-	notes: ['A3'],
-	duration: 900,
-	velocity: 96,
-	delay: 12
-})
-```
-
-### Stop notes
-
-```ts
-customInstrument.stop('C4')
-customInstrument.stop(['E4', 'G4'])
-customInstrument.stop()
-```
-
-### Inspect currently playing notes
-
-```ts
-const playingNotes = customInstrument.getPlayingNotes()
-```
-
-## Stock Instruments
-
-The module prepares stock smplr instruments at runtime:
-
-- instruments.stock.splendidGrandPiano
-- instruments.stock.soundfontPiano
-- instruments.stock.drumMachine808
-
-Example:
-
-```ts
-import { instruments } from '@tasteee/sounds'
-
-instruments.stock.splendidGrandPiano.play({
-	notes: ['C4', 'E4', 'G4'],
-	duration: 1000,
-	velocity: 90
-})
-```
-
-## Internal State
-
-State is managed with datass stores:
-
-- Per-instrument playing note state
-- Created instrument registry (`instruments.created`)
-
-This enables predictable note lifecycle handling and clean stop behavior without hanging voices.
-
-## Notes
-
-- Browsers often require user interaction before audio playback. The module attempts to resume the AudioContext when `play` is called.
-- For SFZ inputs, sample buffers are preloaded and decoded before instrument readiness resolves.
-
-## Browser only
-
-The module creates a shared `AudioContext` on import, so it must run in the browser. In SSR frameworks, import it dynamically on the client.
-
-## Develop
-
-```bash
-pnpm install
-pnpm typecheck
-pnpm build
-pnpm dev:demo
+const piano = createPiano({ context, destination: myMixerNode, volume: 0.8 })
 ```
