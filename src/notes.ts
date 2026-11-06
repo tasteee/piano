@@ -6,7 +6,7 @@ const SEMITONES: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, 
 export const toMidi = (note: NoteT): number => {
 	if (typeof note === 'number') return Math.round(note)
 	const match = /^([A-Ga-g])([#b]?)(-?\d+)$/.exec(note.trim())
-	if (!match) throw new Error(`sounds: invalid note "${note}"`)
+	if (!match) throw new Error(`piano: invalid note "${note}"`)
 	const letter = match[1].toUpperCase()
 	const accidental = match[2] === '#' ? 1 : match[2] === 'b' ? -1 : 0
 	const octave = Number(match[3])
