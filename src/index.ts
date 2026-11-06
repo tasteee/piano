@@ -1,5 +1,6 @@
 import { SplendidGrandPiano } from 'smplr'
-import { toMidi, toVelocity } from './notes'
+import type { Smplr } from 'smplr'
+import { toNote, toVelocity } from './notes'
 import type { NoteT } from './notes'
 
 export type { NoteT } from './notes'
@@ -13,8 +14,19 @@ export type PlayOptionsT = {
 	at?: number
 }
 
-export type CreatePianoOptionsT = {
-	/** Use your own AudioContext. Default: one is created on first use. */
+export type EngineSettingsT = {
+	destination?: AudioNode
+	/** MIDI scale, 0-127. */
+	volume: number
+}
+
+/** Builds any smplr instrument: Soundfont, DrumMachine, ElectricPiano... */
+export type CreateEngineT = (context: AudioContext, settings: EngineSettingsT) => Smplr
+
+export type CreateInstrumentOptionsT = {
+	/** Which smplr instrument to use. Default: Splendid Grand Piano. */
+	create?: CreateEngineT
+	/** Use your own AudioContext. Default: one shared by all instruments, created on first use. */
 	context?: AudioContext
 	/** Route output to your own node. Default: context.destination. */
 	destination?: AudioNode
@@ -22,21 +34,30 @@ export type CreatePianoOptionsT = {
 	volume?: number
 }
 
-export type PianoT = ReturnType<typeof createPiano>
+export type InstrumentT = ReturnType<typeof createInstrument>
+export type PianoT = InstrumentT
+export type CreatePianoOptionsT = CreateInstrumentOptionsT
 
 const SUSTAIN_CC = 64
 
-export const createPiano = (options: CreatePianoOptionsT = {}) => {
+const createSplendidPiano: CreateEngineT = (context, settings) => SplendidGrandPiano(context, settings)
+
+// One AudioContext for every instrument. Browsers cap how many can exist.
+let sharedContext: AudioContext | undefined
+const getSharedContext = () => (sharedContext ??= new AudioContext())
+
+export const createInstrument = (options: CreateInstrumentOptionsT = {}) => {
+	const createEngine = options.create ?? createSplendidPiano
 	let volume = options.volume ?? 1
 	let context: AudioContext | undefined
-	let engine: ReturnType<typeof SplendidGrandPiano> | undefined
+	let engine: Smplr | undefined
 	let loaded = false
 	let loading: Promise<void> | undefined
 
 	const getEngine = () => {
 		if (engine) return engine
-		context = options.context ?? new AudioContext()
-		engine = SplendidGrandPiano(context, { destination: options.destination, volume: Math.round(volume * 127) })
+		context = options.context ?? getSharedContext()
+		engine = createEngine(context, { destination: options.destination, volume: Math.round(volume * 127) })
 		return engine
 	}
 
@@ -65,8 +86,8 @@ export const createPiano = (options: CreatePianoOptionsT = {}) => {
 			const time = instance.context.currentTime + (playOptions.at ?? 0)
 			const velocity = playOptions.velocity === undefined ? undefined : toVelocity(playOptions.velocity)
 			for (const note of list) {
-				const midi = toMidi(note)
-				instance.start({ note: midi, stopId: midi, velocity, time, duration: playOptions.duration })
+				const resolvedNote = toNote(note)
+				instance.start({ note: resolvedNote, stopId: resolvedNote, velocity, time, duration: playOptions.duration })
 			}
 		})
 	}
@@ -75,7 +96,7 @@ export const createPiano = (options: CreatePianoOptionsT = {}) => {
 		whenReady((instance) => {
 			if (notes === undefined) return instance.stop()
 			const list = Array.isArray(notes) ? notes : [notes]
-			for (const note of list) instance.stop({ stopId: toMidi(note) })
+			for (const note of list) instance.stop({ stopId: toNote(note) })
 		})
 	}
 
@@ -102,5 +123,8 @@ export const createPiano = (options: CreatePianoOptionsT = {}) => {
 	}
 }
 
-// Shared instance. Nothing is created or downloaded until first use.
-export const piano = createPiano()
+// Same API, Splendid Grand Piano. Kept for the original name.
+export const createPiano = createInstrument
+
+// Default instance. Nothing is created or downloaded until first use.
+export const piano = createInstrument()

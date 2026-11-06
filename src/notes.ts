@@ -18,3 +18,13 @@ export const toVelocity = (velocity: number): number => {
 	const midi = velocity <= 1 ? velocity * 127 : velocity
 	return Math.max(1, Math.min(127, Math.round(midi)))
 }
+
+const NOTE_PATTERN = /^([A-Ga-g])([#b]?)(-?\d+)$/
+
+// Pitches become MIDI numbers. Other names ('kick', 'snare')
+// pass through for instruments that use sample names.
+export const toNote = (note: NoteT): number | string => {
+	const isPitch = typeof note === 'number' || NOTE_PATTERN.test(note.trim())
+	if (isPitch) return toMidi(note)
+	return note
+}

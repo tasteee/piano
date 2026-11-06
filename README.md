@@ -54,10 +54,32 @@ midiInput.onmidimessage = ({ data: [status, note, velocity] }) => {
 
 For different velocities, call `play` once per velocity.
 
+## Other instruments
+
+`piano` is the Splendid Grand Piano. For anything else, pass any smplr instrument to `createInstrument`. It has the same API as `piano`.
+
+```ts
+import { createInstrument } from '@tasteee/sounds'
+import { Soundfont, DrumMachine } from 'smplr'
+
+const violin = createInstrument({
+	create: (context, settings) => Soundfont(context, { instrument: 'violin', ...settings })
+})
+
+const drums = createInstrument({
+	create: (context, settings) => DrumMachine(context, { instrument: 'TR-808', ...settings })
+})
+
+violin.play('A4', { duration: 1 })
+drums.play('kick')
+```
+
+Instruments share one AudioContext and load lazily, like `piano`.
+
 ## Own AudioContext or mixer
 
 ```ts
-import { createPiano } from '@tasteee/sounds'
+import { createInstrument } from '@tasteee/sounds'
 
-const piano = createPiano({ context, destination: myMixerNode, volume: 0.8 })
+const piano = createInstrument({ context, destination: myMixerNode, volume: 0.8 })
 ```
